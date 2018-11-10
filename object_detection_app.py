@@ -70,9 +70,11 @@ def worker(input_q, output_q):
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
 
-        sess = tf.Session(graph=detection_graph)
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = tf.Session(config=config, graph=detection_graph)
 
-    fps = FPS().start()
+        fps = FPS().start()
     while True:
         fps.update()
         frame = input_q.get()

@@ -71,8 +71,9 @@ def worker(input_q, output_q):
             tf.import_graph_def(od_graph_def, name='')
 
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
+        config.gpu_options.allow_growth = True  #to keep tf from allocating too much gpu memory
         sess = tf.Session(config=config, graph=detection_graph)
+#        sess = tf.Session(graph=detection_graph)
 
         fps = FPS().start()
     while True:

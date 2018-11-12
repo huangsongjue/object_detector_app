@@ -80,7 +80,8 @@ def worker(input_q, output_q):
         fps.update()
         frame = input_q.get()
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        output_q.put(detect_objects(frame_rgb, sess, detection_graph))
+        data = detect_objects(frame_rgb, sess, detection_graph)
+        output_q.put(data)
 
     fps.stop()
     sess.close()
@@ -117,8 +118,8 @@ if __name__ == '__main__':
         input_q.put(frame)
 
         t = time.time()
-
-        output_rgb = cv2.cvtColor(output_q.get(), cv2.COLOR_RGB2BGR)
+        data = output_q.get()
+        output_rgb = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
         cv2.imshow('Video', output_rgb)
         fps.update()
 

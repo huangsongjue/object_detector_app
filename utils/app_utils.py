@@ -68,6 +68,11 @@ class WebcamVideoStream:
 
             # otherwise, read the next frame from the stream
             (self.grabbed, self.frame) = self.stream.read()
+    
+    #read one frame from stream in root  thread, exclusing with update() -hsj
+    def read_one_frame(self):
+        (self.grabbed, self.frame) = self.stream.read()
+        return self.frame
 
     def read(self):
         # return the frame most recently read

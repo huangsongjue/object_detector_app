@@ -77,7 +77,9 @@ def worker(input_q, output_q):
     fps = FPS().start()
     while True:
         fps.update()
-        frame = input_q.get()
+        frame = input_q.get(block=True)
+        if frame is None:
+            continue
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         data = detect_objects(frame_rgb, sess, detection_graph)
         output_q.put(data)
@@ -90,27 +92,33 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-src', '--source', dest='video_source', type=int,
                         default=0, help='Device index of the camera.')
+    parser.add_argument('-file', '--file', dest='video_file', type=str,
+                        default='', help='video file.')
     parser.add_argument('-wd', '--width', dest='width', type=int,
                         default=480, help='Width of the frames in the video stream.')
     parser.add_argument('-ht', '--height', dest='height', type=int,
                         default=360, help='Height of the frames in the video stream.')
     parser.add_argument('-interval', '--iv', dest='interval', type=int,
-                        default=10, help='video stream interval in test')
+                        default=100, help='video stream interval in test')
     parser.add_argument('-gui', '--gui', dest='gui', type=bool,
-                        default=False, help='show gui or not')
+                        default=True, help='show gui or not')
 
     args = parser.parse_args()
 
-    input_q = Queue(5)  # fps is better if queue is higher but then more lags
+    input_q = Queue(15)  # fps is better if queue is higher but then more lags
     output_q = Queue()
     for i in range(1):
         t = Thread(target=worker, args=(input_q, output_q))
         t.daemon = True
         t.start()
 
-    video_capture = WebcamVideoStream(src=args.video_source,
+    video_capture = WebcamVideoStream(#src=args.video_source,
+                                      #src=0,
+                                      src=args.video_file,
+                                      #src="C:\\Users\\songjue\\Videos\\RealTimes\\RealDownloader\\BirdReaction.mp4",
+                                      #src="C:\\Users\\songjue\\Videos\\1.mp4",
                                       width=args.width,
-                                      height=args.height).start()
+                                      height=args.height)#.start()
     fps = FPS().start()
 
     def stop():
@@ -128,7 +136,8 @@ if __name__ == '__main__':
     timer.start()
 
     while True:
-        frame = video_capture.read()
+        #frame = video_capture.read()
+        frame = video_capture.read_one_frame()
         input_q.put(frame)
 
         t = time.time()
@@ -142,4 +151,4 @@ if __name__ == '__main__':
         if args.gui:
             cv2.imshow('Video', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                stop()

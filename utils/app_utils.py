@@ -17,6 +17,9 @@ class FPS:
         self._end = None
         self._numFrames = 0
 
+    def get_frames_num(self):
+        return self._numFrames
+
     def start(self):
         # start the timer
         self._start = datetime.datetime.now()
@@ -54,6 +57,8 @@ class WebcamVideoStream:
         # be stopped
         self.stopped = False
 
+        self.count = 0
+
     def start(self):
         # start the thread to read frames from the video stream
         Thread(target=self.update, args=()).start()
@@ -67,10 +72,16 @@ class WebcamVideoStream:
                 return
 
             # otherwise, read the next frame from the stream
-            (self.grabbed, self.frame) = self.stream.read()
+         #    (self.grabbed, self.frame) = self.stream.read()
+            grabbed, frame = self.stream.read()
+            if grabbed:
+                self.count += 1
+                if self.count % 10 == 0:
+                    self.grabbed, self.frame = grabbed, frame
     
-    #read one frame from stream in root  thread, exclusing with update() -hsj
+    #read one frame from stream in root thread in stead of update() thread.
     def read_one_frame(self):
+
         (self.grabbed, self.frame) = self.stream.read()
         return self.frame
 
@@ -196,3 +207,4 @@ def draw_boxes_and_labels(
         class_names.append(box_to_display_str_map[box])
         class_colors.append(color_rgb[color.lower()])
     return rect_points, class_names, class_colors
+

@@ -51,18 +51,8 @@ def detect_objects(image_np, sess, detection_graph):
         [boxes, scores, classes, num_detections],
         feed_dict={image_tensor: image_np_expanded})
 
-    return dict(boxes=boxes, scores=scores, classes=classes)
     # Visualization of the results of a detection.'
-    '''
-    rect_points, class_names, class_colors = draw_boxes_and_labels(
-        boxes=np.squeeze(boxes),
-        classes=np.squeeze(classes).astype(np.int32),
-        scores=np.squeeze(scores),
-        category_index=category_index,
-        min_score_thresh=.5
-    )
-    '''
-    '''
+
     vis_util.visualize_boxes_and_labels_on_image_array(
         image_np,
         np.squeeze(boxes),
@@ -72,7 +62,7 @@ def detect_objects(image_np, sess, detection_graph):
         use_normalized_coordinates=True,
         line_thickness=8)
     return image_np
-    '''
+
    #return category_index
 
 def worker(input_q, output_q):
@@ -96,8 +86,7 @@ def worker(input_q, output_q):
         frame = input_q.get(block=True)
         if frame is None:
             continue
-        #frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_rgb = frame
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         data = detect_objects(frame_rgb, sess, detection_graph)
         output_q.put(data)
 
@@ -118,20 +107,20 @@ if __name__ == '__main__':
     parser.add_argument('-interval', '--iv', dest='interval', type=int,
                         default=100, help='video stream interval in test')
     parser.add_argument('-gui', '--gui', dest='gui', type=bool,
-                        default=True, help='show gui or not')
+                        default=False, help='show gui or not')
 
     args = parser.parse_args()
 
     input_q = Queue(15)  # fps is better if queue is higher but then more lags
     output_q = Queue()
-    for i in range(2):
+    for i in range(1):
         t = Thread(target=worker, args=(input_q, output_q))
         t.daemon = True
         t.start()
 
     video_capture = WebcamVideoStream(#src=args.video_source,
-                                      src=0,
-                                      #src=args.video_file,
+                                      #src=0,
+                                      src=args.video_file,
                                       #src="C:\\Users\\songjue\\Videos\\RealTimes\\RealDownloader\\BirdReaction.mp4",
                                       #src="C:\\Users\\songjue\\Videos\\1.mp4",
                                       width=args.width,
@@ -160,24 +149,7 @@ if __name__ == '__main__':
         t = time.time()
           
         data = output_q.get()
-
-        rect_points, class_names, class_colors = draw_boxes_and_labels(
-            boxes=np.squeeze(data['boxes']),
-            classes=np.squeeze(data['classes']).astype(np.int32),
-            scores=np.squeeze(data['scores']),
-            category_index=category_index,
-            min_score_thresh=.5
-        )
-
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        for point, name, color in zip(rect_points, class_names, class_colors):
-            cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                          (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3)
-            cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                          (int(point['xmin'] * args.width) + len(name[0]) * 6,
-                           int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
-            cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font, 0.3, (0, 0, 0), 1)
-      #  frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+#        frame = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
 
         fps.update()
 

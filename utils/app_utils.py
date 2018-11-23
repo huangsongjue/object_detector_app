@@ -72,13 +72,14 @@ class WebcamVideoStream:
                 return
 
             # otherwise, read the next frame from the stream
-         #    (self.grabbed, self.frame) = self.stream.read()
+            (self.grabbed, self.frame) = self.stream.read()
+            '''
             grabbed, frame = self.stream.read()
             if grabbed:
                 self.count += 1
                 if self.count % 10 == 0:
                     self.grabbed, self.frame = grabbed, frame
-    
+            '''
     #read one frame from stream in root thread in stead of update() thread.
     def read_one_frame(self):
 

@@ -80,6 +80,7 @@ class WebcamVideoStream:
                 if self.count % 10 == 0:
                     self.grabbed, self.frame = grabbed, frame
             '''
+
     #read one frame from stream in root thread in stead of update() thread.
     def read_one_frame(self):
 

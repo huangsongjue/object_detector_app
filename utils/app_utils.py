@@ -45,13 +45,16 @@ class FPS:
 
 
 class WebcamVideoStream:
-    def __init__(self, src, width, height):
+    def __init__(self, src, width, height, batch):
         # initialize the video camera stream and read the first frame
         # from the stream
         self.stream = cv2.VideoCapture(src)
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        (self.grabbed, self.frame) = self.stream.read()
+        self.batch = batch
+        (self.grabbed, img) = self.stream.read()
+        self.frame = []
+        self.frame.append(img)
 
         # initialize the variable used to indicate if the thread should
         # be stopped
@@ -71,8 +74,16 @@ class WebcamVideoStream:
             if self.stopped:
                 return
 
-            # otherwise, read the next frame from the stream
-            (self.grabbed, self.frame) = self.stream.read()
+            # otherwise, read the next batch frames from the stream
+            frames = []
+            for i in range(self.batch):
+                self.grabbed, img = self.stream.read()
+                frames.append(img)
+
+            self.frame = frames
+
+            #(self.grabbed, self.frame) = self.stream.read()
+
             '''
             grabbed, frame = self.stream.read()
             if grabbed:

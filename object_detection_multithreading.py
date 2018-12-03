@@ -32,10 +32,14 @@ categories = label_map_util.convert_label_map_to_categories(label_map, max_num_c
 category_index = label_map_util.create_category_index(categories)
 
 
-def detect_objects(image_np, sess, image_tensor, boxes, scores, classes, num_detections):
+def detect_objects(image_np, sess, image_tensor, boxes, scores, classes, num_detections, oneImg=False):
 #def detect_objects(image_np, sess, detection_graph):
     # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-    image_np_expanded = np.expand_dims(image_np, axis=0)
+    if (oneImg):
+        image_np_expanded = np.expand_dims(image_np, axis=0)
+    else:
+        image_np_expanded = image_np
+    #print("len in detect_objects:", len(image_np))
     '''
     image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
 
@@ -53,6 +57,7 @@ def detect_objects(image_np, sess, image_tensor, boxes, scores, classes, num_det
         [boxes, scores, classes, num_detections],
         feed_dict={image_tensor: image_np_expanded})
 
+    #print("len after detect_objects:", len(image_np))
     return dict(boxes=boxes, scores=scores, classes=classes)
     # Visualization of the results of a detection.'
     '''
@@ -107,12 +112,17 @@ def worker(input_q, output_q):
     #'''
     while True:
         fps.update()
-        frame = input_q.get(block=True)
-        if frame is None:
-            continue
-        #frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_rgb = frame
-        data = detect_objects(frame_rgb, sess, image_tensor, boxes, scores, classes, num_detections)
+        frm = input_q.get(block=True)
+      #  if frm is None:
+      #      continue
+
+    #    print("len of frames before ==> ", len(frm), "\n")
+        data = detect_objects(frm, sess, image_tensor, boxes, scores, classes, num_detections)
+     #   print("len of frames after==> ", len(frm), "\n")
+     #   print("len of boxes ==> ", len(data['boxes']), "\n")
+        if (len(frm) != len(data['boxes'])):
+            for img in frames:
+                r = detect_objects(img, sess, image_tensor, boxes, scores, classes, num_detections, oneImg=True)
         #data = detect_objects(frame_rgb, sess, detection_graph)
         output_q.put(data)
 
@@ -139,11 +149,15 @@ if __name__ == '__main__':
 
     input_q = Queue(15)  # fps is better if queue is higher but then more lags
     output_q = Queue()
-    for i in range(2):
+    '''
+    for i in range(1):
         t = Thread(target=worker, args=(input_q, output_q))
         t.daemon = True
         t.start()
+    '''
+    Thread(target=worker, args=(input_q, output_q)).start()
 
+    batch = 1
     video_capture = WebcamVideoStream(#src=args.video_source,
                                       src=0,
                                       #src=args.video_file,
@@ -151,7 +165,7 @@ if __name__ == '__main__':
                                       #src="C:\\Users\\songjue\\Videos\\1.mp4",
                                       width=args.width,
                                       #eight=args.height)
-                                      height=args.height).start()
+                                      height=args.height, batch=batch).start()
     fps = FPS().start()
 
     def stop():
@@ -162,44 +176,62 @@ if __name__ == '__main__':
         video_capture.stop()
         cv2.destroyAllWindows()
         os.kill(os.getpid(), signal.SIGKILL)
-
+    '''
     import threading
     timer = threading.Timer(args.interval, stop)
     timer.start()
+    '''
 
     while True:
-        frame = video_capture.read()
-        #frame = video_capture.read_one_frame()
-        input_q.put(frame)
+        #frames = []
+        frames = video_capture.read()
+        if frames[0] is None:
+            print("end of video")
+            stop()
+        '''
+        for i in range(batch):
+            frame = video_capture.read_one_frame()
+            frames.append(frame)
+        '''
+
+        input_q.put(frames)
+
+        #input_q.put(frame)
 
         t = time.time()
           
         data = output_q.get()
 
-        rect_points, class_names, class_colors = draw_boxes_and_labels(
-            boxes=np.squeeze(data['boxes']),
-            classes=np.squeeze(data['classes']).astype(np.int32),
-            scores=np.squeeze(data['scores']),
-            category_index=category_index,
-            min_score_thresh=.5
-        )
+        for f in range(len(frames)):
+            frame = frames[f]
+          #  '''
+            rect_points, class_names, class_colors = draw_boxes_and_labels(
+                boxes=np.squeeze(data['boxes'][f]),
+                classes=np.squeeze(data['classes'][f]).astype(np.int32),
+                scores=np.squeeze(data['scores'][f]),
+                category_index=category_index,
+                min_score_thresh=.5
+            )
 
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        for point, name, color in zip(rect_points, class_names, class_colors):
-            cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                          (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3)
-            cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                          (int(point['xmin'] * args.width) + len(name[0]) * 6,
-                           int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
-            cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font, 0.3, (0, 0, 0), 1)
-      #  frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            for point, name, color in zip(rect_points, class_names, class_colors):
+                cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
+                              (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3)
+                cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
+                              (int(point['xmin'] * args.width) + len(name[0]) * 6,
+                               int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
+                cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font, 0.3, (0, 0, 0), 1)
+          #  frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+           # '''
+            fps.update()
 
-        fps.update()
+            if fps.get_frames_num() % 100 == 0:
+                print('[INFO] frame processed: ', fps.get_frames_num())
 
-        print('[INFO] elapsed time: {:.2f}'.format(time.time() - t))
-        if args.gui:
-            #if (fps.get_frames_num()) % 10 != 0:
-            #    continue
-            cv2.imshow('Video', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                stop()
+            print('[INFO] elapsed time: {:.2f}'.format(time.time() - t))
+            if args.gui:
+                #if (fps.get_frames_num()) % 10 != 0:
+                #    continue
+                cv2.imshow('Video', frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    stop()
